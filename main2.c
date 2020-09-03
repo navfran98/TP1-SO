@@ -14,15 +14,14 @@
 #include <signal.h>
 #include <sys/mman.h>
 #include "queuelib.h"
-#include <time.h>
 
-#define SLAVES 3
 
 
 int main(int argc, char * argv[]){
     int files = argc-1;
     int slavesAmmount = (files)/20; //esto me da la parte entera pero de abajo...
     slavesAmmount++;
+    int * slaves = malloc(sizeof(char)*slavesAmmount);
 
     int  * pipes[2] = malloc(sizeof(char[2])*slavesAmmount);
 
@@ -41,7 +40,7 @@ int main(int argc, char * argv[]){
     sem_t * slave_filesems = malloc(sizeof(sem_t)*slavesAmmount);
 
     for(int i = 0; i<slavesAmmount; i++){
-        sem_init(&sem_slavefilesems + i*sizeof(sem_t)),1,0);
+        sem_init(slave_filesems + i*sizeof(sem_t),1,0);
     }
 
 
@@ -72,11 +71,7 @@ int main(int argc, char * argv[]){
 
 
     if(pid == 0){
-        int i;
-        for(i = 0, int done = 0; i<slavesAmmount && !done; i++){
-
-        }
-        sem_wait()
+        
 
     
     }

@@ -15,36 +15,14 @@
 #include <sys/mman.h>
 #include "queuelib.h"
 
-int * files_remaining;
-int * files_to_receive;
-int * slave_counter;
-
+#define SLAVES 3
 sem_t sem_file;
 sem_t sem_buffer;
 sem_t sem_filesRemaining;
 sem_t sem_filesReceived;
 sem_t sem_slaveCounter;
 
-int getFilesToReceive(){
-    sem_wait(&sem_filesReceived);
-    int retval = *files_to_receive;
-    sem_post(&sem_filesReceived);
-    return retval;
-}
 
-int getFilesRemaining(){
-    sem_wait(&sem_filesRemaining);
-    int retval = *files_remaining;
-    sem_post(&sem_filesRemaining);
-    return retval;
-}
-
-int getSlaveCounter(){
-    sem_wait(&sem_slaveCounter);
-    int retval = *slave_counter;
-    sem_post(&sem_slaveCounter);
-    return retval;
-}
 
 
 void * thread_routine(void * arg){
@@ -68,26 +46,10 @@ int main(int argc, char * argv[]){
     int slavesAmmount = (argc-1)/20; //esto me da la parte entera pero de abajo...
     slavesAmmount++;
 
-    int * slaves = malloc(sizeof(char)*argc);
-
+    int  * myPipes[2] = malloc(sizeof(char)*(argc-1)/20);
     
 
-    int fd = shm_open("/filesRemaining", O_CREAT | O_RDWR  , 0600); /* create s.m object*/
-    ftruncate(fd, sizeof(int)); 
-    files_remaining = mmap(NULL, sizeof(int), PROT_WRITE, MAP_SHARED, fd, 0);
-    *files_remaining = argc-1;
-
-    int fd2 = shm_open("/filesReceived", O_CREAT | O_RDWR  , 0600); /* create s.m object*/
-    ftruncate(fd2, sizeof(int)); 
-    files_to_receive = mmap(NULL, sizeof(int), PROT_WRITE, MAP_SHARED, fd2, 0);
-    *files_to_receive = argc-1;
-
-    int fd3 = shm_open("/slave_counter", O_CREAT | O_RDWR  , 0600); /* create s.m object*/
-    ftruncate(fd3, sizeof(int)); 
-    slave_counter = mmap(NULL, sizeof(int), PROT_WRITE, MAP_SHARED, fd3, 0);
-    *slave_counter = 0;
-
-
+    int * slaves = malloc(sizeof(char)*argc);
 
     
     
@@ -95,7 +57,7 @@ int main(int argc, char * argv[]){
     sem_init(&sem_file, 1,1 /*cantidad de puntos q empieza */);
     sem_init(&sem_slaveCounter, 1, 1);
     sem_init(&sem_filesReceived, 1,1 );
-    sem_init(&sem_filesRemaining, 1,1 );
+    sem_init(&sem_filesRemaining, 1,0);
 
     if( mkfifo("/tmp/buffer_pipe", 0777 /*permisos*/) == -1){
         if(errno != EEXIST){
@@ -146,7 +108,7 @@ int main(int argc, char * argv[]){
         }
 
         while(1){
-            
+            sem_wait(&sem_filesRemaining);
             sem_wait(&sem_file);
             read(fp, &fd, sizeof(fd));
             processed_files++;
@@ -183,6 +145,7 @@ int main(int argc, char * argv[]){
         int x = files;
         while(files != 0){
             x = files;
+            sem_post(&sem_filesRemaining);
             int fp = open("/tmp/file_pipe", O_WRONLY);
             printf("LE PASO FILE, QUEDAN: %d\n",x);
             write(fp, &x,sizeof(x));
